@@ -6,10 +6,24 @@
 -- Source: https://github.com/JerryBrick/promethean
 ------------------------------------------------------------------------------
 
+---@class AnimationTransform
+---@field curve BalltzeMathBezierCurve
+---@field duration integer
+---@field reverse boolean
+---@field value integer
+
+---@class AnimationPositionTransform
+---@field x AnimationTransform
+---@field y AnimationTransform
+
+---@class ActiveAnimationTransform
+---@field position AnimationPositionTransform
+---@field opacity AnimationTransform
+
 ---@class ActiveAnimation
 ---@field widget MetaEngineWidget
 ---@field initialValues table
----@field transformation table
+---@field transformation ActiveAnimationTransform
 ---@field startTimestamp BalltzeMiscTimestamp
 ---@field type number
 
@@ -48,7 +62,7 @@ local animationsParameters = {
         transformation = {
             position = {
                 x = {
-                    value = 4,
+                    value = -4,
                     duration = 125,
                     curve = animationCurves.easeInOut,
                     reverse = false
@@ -63,7 +77,7 @@ local animationsParameters = {
 
 ---@param widget MetaEngineWidget
 local function getDefinitionTagPath(widget)
-    local widgetTag = Engine.tag.getTag(widget.definitionTagHandle)
+    local widgetTag = Engine.tag.getTag(widget.definitionTagHandle.handle)
     if not widgetTag then
         Logger:error("Attempted to get tag path of a widget with no tag")
         return nil
@@ -201,6 +215,27 @@ local function endAnimation(widget, animationType)
     end
 end
 
+function DeepCopy(orig, copies)
+    copies = copies or {}
+    local origType = type(orig)
+    local copy
+    if (origType == 'table') then
+        if copies[orig] then
+            copy = copies[orig]
+        else
+            copy = {}
+            copies[orig] = copy
+            for origKey, origValue in next, orig, nil do
+                copy[DeepCopy(origKey, copies)] = DeepCopy(origValue, copies)
+            end
+            setmetatable(copy, DeepCopy(getmetatable(orig), copies))
+        end
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
+end
+
 ---@param widget MetaEngineWidget
 ---@param animationParams AnimationParameters
 ---@param revert? boolean
@@ -224,7 +259,7 @@ local function playAnimation(widget, animationParams, revert)
         end
     end
     
-    local anim = Balltze.misc.deepCopyTable(animationParams)
+    local anim = DeepCopy(animationParams)
     anim.widget = widget
     anim.startTimestamp = Balltze.misc.setTimestamp()
     anim.initialValues = widgetInitialValues
@@ -253,9 +288,9 @@ local function applyWidgetAnimations()
 
             local t = animElapsedMilliseconds / transform.duration
             if(not transform.reverse) then
-                animWidget.position.x = transform.curve:getPoint(initialValue, initialValue + transform.value, t)
+                animWidget.position.x = math.floor(transform.curve:getPoint(initialValue, initialValue + transform.value, t))
             else
-                animWidget.position.x = transform.curve:getPoint(initialValue - transform.value, initialValue, t)
+                animWidget.position.x = math.floor(transform.curve:getPoint(initialValue - transform.value, initialValue, t))
             end
 
             if(animElapsedMilliseconds < transform.duration) then
@@ -269,9 +304,9 @@ local function applyWidgetAnimations()
 
             local t = animElapsedMilliseconds / transform.duration
             if(not transform.reverse) then
-                animWidget.position.y = transform.curve:getPoint(initialValue, initialValue + transform.value, t)
+                animWidget.position.y = math.floor(transform.curve:getPoint(initialValue, initialValue + transform.value, t))
             else
-                animWidget.position.y = transform.curve:getPoint(initialValue - transform.value, initialValue, t)
+                animWidget.position.y = math.floor(transform.curve:getPoint(initialValue - transform.value, initialValue, t))
             end
 
             if(animElapsedMilliseconds < transform.duration) then
@@ -285,9 +320,9 @@ local function applyWidgetAnimations()
 
             local t = animElapsedMilliseconds / transform.duration
             if(not transform.reverse) then
-                animWidget.opacity = transform.curve:getPoint(initialValue, initialValue + transform.value, t)
+                animWidget.opacity = math.floor(transform.curve:getPoint(initialValue, initialValue + transform.value, t))
             else
-                animWidget.opacity = transform.curve:getPoint(initialValue - transform.value, initialValue, t)
+                animWidget.opacity = math.floor(transform.curve:getPoint(initialValue - transform.value, initialValue, t))
             end
 
             if(animElapsedMilliseconds < transform.duration) then
@@ -354,7 +389,7 @@ end
 
 ---@type BalltzeUIWidgetListTabEventCallback
 local function onWidgetListTabEvent(context)
-    if context.time == "before" then
+    if context.time == "after" then
         return
     end
 
@@ -368,7 +403,7 @@ local function onWidgetListTabEvent(context)
     if(state.lastFocusedWidget) then
         local lastFocusedWidgetAnim = getAnimationForWidget(state.lastFocusedWidget, animationTypes.onFocus)
         if(lastFocusedWidgetAnim) then
-            Logger:debug("(widget list tab) Reversing last focused widget animation...")
+            Logger:debug("(widget list tab) Reversing last focused widget animation {}", getDefinitionTagPath(state.lastFocusedWidget))
             playAnimation(state.lastFocusedWidget, lastFocusedWidgetAnim, true)
         end
     end
@@ -393,7 +428,7 @@ local function onWidgetListTabEvent(context)
 
     local anim = getAnimationForWidget(nextWidget, animationTypes.onFocus)
     if anim then
-        Logger:debug("(widget list tab) Playing animation for focused widget: " .. getDefinitionTagPath(focusedWidget))
+        Logger:debug("(widget list tab) Playing animation for focused widget: {}", getDefinitionTagPath(focusedWidget))
         state.lastFocusedWidget = nextWidget
         playAnimation(nextWidget, anim)
     end
