@@ -5,6 +5,7 @@ Logger = {}
 
 local fontOverride = require "fontOverride"
 local cursor = require "cursor"
+local widgetAnimation = require "widgetAnimation"
 
 ---@type BalltzeMapLoadEventCallback
 local function onMapLoad(context) 
@@ -43,4 +44,5 @@ end
 function PluginLoad() 
     fontOverride.setup()
     cursor.setup()
+    widgetAnimation.setup()
 end
