@@ -1,5 +1,6 @@
 {
     "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
     "workspace.library": ["balltze-lib/docs", "balltze-lib/modules"],
-    "runtime.version": "Lua 5.3"
+    "runtime.version": "Lua 5.3",
+    "runtime.path": ["lua/?.lua", "lua/modules/?.lua"]
 }
